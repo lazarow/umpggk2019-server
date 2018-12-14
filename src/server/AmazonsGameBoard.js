@@ -5,18 +5,6 @@
  * Exception format:
  * [code, player]
  */
-
-function checkIsMoveAvailable(availableMoves) {
-    const args = Array.prototype.slice.call(arguments, 1);
-    for (let i = 0; i < args.length; i++) {
-        if (! availableMoves || ! availableMoves.hasOwnProperty(args[i])) {
-            return false;
-        }
-        availableMoves = availableMoves[args[i]];
-    }
-    return true;
-}
-
 class AmazonsGameBoard
 {
 	constructor() {
@@ -43,11 +31,22 @@ class AmazonsGameBoard
     indexToPosition(index) {
         return [index % this.size, Math.floor(index / this.size)];
     }
+    checkIsMoveAvailable() {
+        const args = Array.prototype.slice.call(arguments, 0);
+        let availableMoves = this.availableMoves;
+        for (let i = 0; i < args.length; i++) {
+            if (! availableMoves || ! availableMoves.hasOwnProperty(args[i])) {
+                return false;
+            }
+            availableMoves = availableMoves[args[i]];
+        }
+        return true;
+    }
     makeMove(from, to, shoot) {
         from = this.positionToIndex(from);
         to = this.positionToIndex(to);
         shoot = this.positionToIndex(shoot);
-        if (checkNested(this.availableMoves, from, to, shoot) === false) {
+        if (this.checkIsMoveAvailable(from, to, shoot) === false) {
             throw [2, this.player];
         }
         this.state[from] = '.';
