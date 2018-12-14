@@ -6,13 +6,13 @@
  * [code, player]
  */
 
-function checkNested(obj) {
+function checkIsMoveAvailable(availableMoves) {
     const args = Array.prototype.slice.call(arguments, 1);
     for (let i = 0; i < args.length; i++) {
-        if (! obj || ! obj.hasOwnProperty(args[i])) {
+        if (! availableMoves || ! availableMoves.hasOwnProperty(args[i])) {
             return false;
         }
-        obj = obj[args[i]];
+        availableMoves = availableMoves[args[i]];
     }
     return true;
 }
