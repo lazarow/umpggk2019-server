@@ -5,43 +5,69 @@
  * Exception format:
  * [code, player]
  */
-class AmazonsGameBoard
+const defaultSize = 10;
+const defaultInitialState = '...w..w...' + '..........' + '..........' + 'w........w'
+	+ '..........' + '..........' + 'b........b' + '..........' + '..........' + '...b..b...';
+
+module.exports = class AmazonsGameBoard
 {
-	constructor() {
-		this.size = 10;
+	constructor(initialState) {
+		this.initialState = initialState || defaultInitialState;
+		this.size = Math.sqrt(this.initialState.length);
 		this.reset();
 	}
 	reset() {
-		this.state = '.'.repeat(this.size * this.size);
-		this.state[3] = this.state[6] = this.state[30] = this.state[39] = 'w';
-        this.state[60] = this.state[69] = this.state[93] = this.state[96] = 'b';
-		this.whiteAmazons = [3, 6, 30, 39];
-		this.blackAmazons = [60, 69, 93, 96];
+		this.state = this.initialState.split('');
+		this.state.toString = function () {
+			return this.join('');
+		};
+		this.whiteAmazons = [];
+		this.blackAmazons = [];
+		for (let i = 0; i < this.state.length; ++i) {
+			if (this.state[i] === 'w') {
+				this.whiteAmazons.push(i);
+			} else if (this.state[i] === 'b') {
+				this.blackAmazons.push(i);
+			}
+		}
         this.player = 'white';
         this.generateAvailableMoves();
 	}
 	positionToIndex(position) {
-        let x = position.substring(0, 1).charCodeAt(0) - 97;
-        let y = parseInt(position.substring(1)) - 1;
+        let y = position.substring(0, 1).charCodeAt(0) - 97;
+        let x = parseInt(position.substring(1)) - 1;
 		return this.coordinatesToIndex(x, y);
 	}
     coordinatesToIndex(x, y) {
 		return y * this.size + x;
 	}
-    indexToPosition(index) {
+    indexToCoordinates(index) {
         return [index % this.size, Math.floor(index / this.size)];
     }
-    checkIsMoveAvailable() {
-        const args = Array.prototype.slice.call(arguments, 0);
-        let availableMoves = this.availableMoves;
-        for (let i = 0; i < args.length; i++) {
-            if (! availableMoves || ! availableMoves.hasOwnProperty(args[i])) {
-                return false;
-            }
-            availableMoves = availableMoves[args[i]];
-        }
-        return true;
+	indexToPosition(index) {
+		let x = index % this.size;
+		let y = Math.floor(index / this.size);
+        return String.fromCharCode(97 + y) + '' + (x + 1);
     }
+    checkIsMoveAvailable(from, to, shoot) {
+		for (let move of this.availableMoves) {
+			if (move[0] == from && move[1] == to && move[2] == shoot) {
+				return true;
+			}
+		}
+        return false;
+    }
+	printAvailableMoves() {
+		let i = 0;
+		console.log('Start printing all moves for the board state: ' + this.state
+			+ ' and the player: ' + this.player);
+		for (let move of this.availableMoves) {
+			console.log('[#' + ++i + '] from: ' + move[0] + ' (' + this.indexToPosition(move[0])
+				+ '), to: ' + move[1] + ' (' + this.indexToPosition(move[1])
+				+ ') and shoot: ' + move[2] + ' (' + this.indexToPosition(move[2]) + ')');
+		}
+		console.log('End');
+	}
     makeMove(from, to, shoot) {
         from = this.positionToIndex(from);
         to = this.positionToIndex(to);
@@ -52,7 +78,7 @@ class AmazonsGameBoard
         this.state[from] = '.';
         this.state[to] = this.player.substring(0, 1);
         this.state[shoot] = 'x';
-        this[this.player + 'Amazons'][this[this.player + 'Amazons'].findIndex(from)] = to;
+        this[this.player + 'Amazons'][this[this.player + 'Amazons'].indexOf(from)] = to;
         this.player = this.player === 'black' ? 'white' : 'black';
         this.generateAvailableMoves();
     }
@@ -61,20 +87,37 @@ class AmazonsGameBoard
         const transitions = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]];
         for (let amazon of this[this.player + 'Amazons']) {
             let x, y;
-            [x, y] = this.indexToPosition(amazon);
+            [x, y] = this.indexToCoordinates(amazon);
             for (let transition1 of transitions) {
-                let tx = x + transition1[0], ty = y + transition1[1];
-                let target = this.coordinatesToIndex(tx, ty);
-                if (this.state[target] !== '.') {
-                    break;
-                }
-                for (let transition2 of transitions) {
-                    let shoot = this.coordinatesToIndex(tx + transition2[0], ty + transition2[1]);
-                    if (this.state[shoot] !== '.') {
-                        break;
-                    }
-                    this.availableMoves[amazon][target][shoot] = 1;
-                }
+				let tx = x;
+				let ty = y;
+				while (true) {
+					tx += transition1[0], ty += transition1[1];
+					let target = this.coordinatesToIndex(tx, ty);
+					if (
+						this.state[target] !== '.'
+						|| tx < 0 || tx == this.size
+						|| ty < 0 || ty == this.size
+					) {
+						break;
+					}
+					for (let transition2 of transitions) {
+						let sx = tx;
+						let sy = ty;
+						while (true) {
+							sx += transition2[0], sy += transition2[1];
+							let shoot = this.coordinatesToIndex(sx, sy);
+							if (
+								(shoot !== amazon && this.state[shoot] !== '.')
+								|| sx < 0 || sx == this.size
+								|| sy < 0 || sy == this.size
+							) {
+								break;
+							}
+							this.availableMoves.push([amazon, target, shoot]);
+						}
+					}
+				}
             }
         }
         if (this.availableMoves.length === 0) {
