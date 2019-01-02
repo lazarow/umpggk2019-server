@@ -10,10 +10,11 @@ module.exports = class TournamentRegistry
             this._ = {
                 isStarted: false,
                 options: Object.assign({
-                    system: 'round-robin',
+                    system: 'roundrobin',
                     nofGames: 10,
                     initialBoard: '...w..w.......................w........w....................b........b.......................b..b...',
-                    timeLimit: 2000
+                    timeLimit: 2000,
+					autostart: false
                 }, options),
                 players: [],
                 rounds: [],

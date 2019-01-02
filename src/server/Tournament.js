@@ -1,4 +1,7 @@
 const robin = require('roundrobin');
+const readline = require('readline');
+const log = require('./log.js')(__filename);
+const AmazonsGameBoard = require('./AmazonsGameBoard.js');
 
 module.exports = class Tournament
 {
@@ -31,7 +34,7 @@ module.exports = class Tournament
         // marks a tournament as started
         if (this._._.isStarted === false) {
             // start moves timeouts checking timer
-            this.movesTimeoutsCheckingTimer = setInterval(this.startMovesTimeoutsChecking, 200);
+            this.movesTimeoutsCheckingTimer = setInterval(() => this.startMovesTimeoutsChecking(), 200);
         }
         this._._.isStarted = true;
         // now, starts the current round
@@ -44,7 +47,7 @@ module.exports = class Tournament
 		};
         // creates the pairing for the current round
         let pairing = [];
-		if (this._._.options.system === 'round-robin') {
+		if (this._._.options.system === 'roundrobin') {
 			const roundRobinRounds = robin(this._._.players.length, Object.keys(this._._.players));
 			if (roundIdx < roundRobinRounds.length) {
 				pairing = roundRobinRounds[roundIdx];
@@ -69,7 +72,7 @@ module.exports = class Tournament
                     matchIdx: matchIdx, // reduces searching
                     roundIdx: roundIdx, // reduces searching
 					white: i < this._._.options.nofGames / 2 ? competitors[0] : competitors[1],
-					black: i < this._._.options.nofGames / 2 ? competitors[1] : competitors[2],
+					black: i < this._._.options.nofGames / 2 ? competitors[1] : competitors[0],
 					winner: null,
 					loser: null,
 					wonBy: null,
@@ -85,7 +88,14 @@ module.exports = class Tournament
 			}
 			this._._.rounds[roundIdx].matches.push(matchIdx);
 		}
-        this.startUncompletedMatches();
+		log.info('The round #' + roundIdx + ' has been started with ' + this._._.rounds[roundIdx].matches.length
+			+ ' matches');
+		// starts matches if available
+		if (this._._.rounds[roundIdx].matches.length > 0) {
+			this.startUncompletedMatches();
+		} else {
+			log.info('No matches were found hence the tournament is over');
+		}
     }
     startUncompletedMatches() {
         let nofStartedMatches = 0;
@@ -94,7 +104,7 @@ module.exports = class Tournament
         this._._.matches.filter(match => match.startedAt !== null && match.finishedAt === null).forEach(match => {
             // checks IP addresses from running matches
             match.players.forEach(playerIdx => {
-                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx === playerIdx);
+                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == playerIdx);
                 if(typeof socketClient !== 'undefined') {
                     usedIPAddresses.push(socketClient.remoteAddress);
                 }
@@ -106,7 +116,7 @@ module.exports = class Tournament
             let addresses = [];
             // checks IP addresses from upcoming matches
             match.players.forEach(playerIdx => {
-                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx === playerIdx);
+                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == playerIdx);
                 if(typeof socketClient !== 'undefined') {
                     addresses.push(socketClient.remoteAddress);
                 }
@@ -121,6 +131,18 @@ module.exports = class Tournament
         if (nofStartedMatches === 0) {
             let round = this._._.rounds.find(round => round.finishedAt === null);
             round.finishedAt + new Date();
+			if (this._._.opions.autostart == true) {
+				this.startUncompletedRound();
+			} else {
+				const rl = readline.createInterface({
+					input: process.stdin,
+					output: process.stdout
+				});
+				rl.question('Press [ENTER] to start the next round ', (answer) => {
+					this.startUncompletedRound();
+					rl.close();
+				});
+			}
         } else {
             this.startUncompletedGames(); // starts matches' games
         }
@@ -133,8 +155,8 @@ module.exports = class Tournament
                 if (this._._.games[gameIdx].startedAt === null) {
 					this._._.games[gameIdx].startedAt = + new Date(); // starts the game
                     // finds corresponding socket clients
-                    const whiteSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === this._._.games[gameIdx].white);
-                    const blackSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === this._._.games[gameIdx].black);
+                    const whiteSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].white);
+                    const blackSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].black);
 					// both players are disconnected
                     if (whiteSocketClient === undefined && blackSocketClient === undefined) {
 						this._._.games[gameIdx].finishedAt = + new Date();
@@ -155,9 +177,11 @@ module.exports = class Tournament
                         this._._.games[gameIdx].playerOnMove = 'white';
                         this._._.games[gameIdx].moveTimeout = (+ new Date()) + this._._.options.timeLimit;
                         // creates the board
-                        this.boards[gameIdx] = new AmazonsGameBoard(this.settings.initialBoard);
-                        this._._.games[gameIdx].initialBoard = this.settings.initialBoard;
+                        this.boards[gameIdx] = new AmazonsGameBoard(this._._.options.initialBoard);
+                        this._._.games[gameIdx].initialBoard = this._._.options.initialBoard;
                         this._._.games[gameIdx].currentBoard = this.boards[gameIdx].state.toString();
+						whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+						blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
 						hasUnfinishedGame = true;
 						break; // starts only one game
 					}
@@ -178,8 +202,8 @@ module.exports = class Tournament
                 const winner = game.playerOnMove === 'white' ? 'black' : 'white';
                 const loser = game.playerOnMove;
                 // since JS is single-threaded hence the socket clients should be available
-                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[winner]);
-                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[loser]);
+                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
+                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[loser]);
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
@@ -193,14 +217,14 @@ module.exports = class Tournament
     }
     applyMove(playerIdx, move) {
         const game = this._._.games.find(
-            game => (game.white === playerIdx || game.black === playerIdx)
+            game => (game.white == playerIdx || game.black == playerIdx)
             && game.startedAt !== null && game.finishedAt === null
         );
         // check if the game exists
         if (typeof game !== 'undefined') {
             try {
                 // check is the player's turn
-                if (game[game.playerOnMove] !== playerIdx) {
+                if (game[game.playerOnMove] != playerIdx) {
                     throw [3, playerIdx];
                 }
                 // try to make a move
@@ -210,25 +234,26 @@ module.exports = class Tournament
                 game.currentBoard = this.boards[game.idx].state.toString();
                 game.moves.push(move);
                 // the player should be available
-                const socketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[game.playerOnMove]);
+                const socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[game.playerOnMove]);
                 socketClient.write('220 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
             } catch (e) {
-                if (e[0] === 1) { // no moves for the next player
-                    const winner = game.playerOnMove;
-                    const loser = game.playerOnMove === 'white' ? 'black' : 'white';
+				let winner, loser;
+                if (e[0] == 1) { // no moves for the next player
+                    winner = game.playerOnMove;
+                    loser = game.playerOnMove === 'white' ? 'black' : 'white';
                     game.wonBy = 'Wygrana zgodnie z zasadami';
-                } else if (e[0] === 2) { // an invalid move has been played
-                    const winner = game.playerOnMove === 'white' ? 'black' : 'white';
-                    const loser = game.playerOnMove;
+                } else if (e[0] == 2) { // an invalid move has been played
+                    winner = game.playerOnMove === 'white' ? 'black' : 'white';
+                    loser = game.playerOnMove;
                     game.wonBy = 'Wygrana zgodnie z zasadami (niepoprawny ruch)';
-                } else if (e[0] === 3) { // the player has played on the opponent's turn
-                    const winner = game.playerOnMove === 'white' ? 'black' : 'white';
-                    const loser = game.playerOnMove;
+                } else if (e[0] == 3) { // the player has played on the opponent's turn
+                    winner = game.playerOnMove;
+                    loser = game.playerOnMove === 'white' ? 'black' : 'white';
                     game.wonBy = 'Wygrana zgodnie z zasadami (zagranie nie w swojej turze)';
-                }
+                }				
                 // finishes the game and starts upcoming games
-                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[winner]);
-                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[loser]);
+                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
+                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[loser]);
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
@@ -243,14 +268,14 @@ module.exports = class Tournament
      */
     disconnect(playerIdx) {
         const game = this._._.games.find(
-            game => (game.white === playerIdx || game.black === playerIdx)
+            game => (game.white == playerIdx || game.black == playerIdx)
             && game.startedAt !== null && game.finishedAt === null
         );
         if (typeof game !== 'undefined') {
-            const winner = game.white === playerIdx ? 'black' : 'white';
-            const loser = game.white === playerIdx ? 'white' : 'black';
+            const winner = game.white == playerIdx ? 'black' : 'white';
+            const loser = game.white == playerIdx ? 'white' : 'black';
             // the socket client should be available
-            const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx === game[winner]);
+            const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
             game.finishedAt = + new Date();
             game.winner = winner;
             game.loser = loser;

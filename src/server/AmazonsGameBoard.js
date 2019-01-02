@@ -34,8 +34,8 @@ module.exports = class AmazonsGameBoard
         this.generateAvailableMoves();
 	}
 	positionToIndex(position) {
-        let y = position.substring(0, 1).charCodeAt(0) - 97;
-        let x = parseInt(position.substring(1)) - 1;
+        let x = position.substring(0, 1).charCodeAt(0) - 97;
+        let y = parseInt(position.substring(1)) - 1;
 		return this.coordinatesToIndex(x, y);
 	}
     coordinatesToIndex(x, y) {
@@ -67,6 +67,20 @@ module.exports = class AmazonsGameBoard
 				+ ') and shoot: ' + move[2] + ' (' + this.indexToPosition(move[2]) + ')');
 		}
 		console.log('End');
+	}
+	printFullBoard() {
+		let board = '  ';
+		for (let x = 0; x < this.size; ++x) {
+			board += '| ' + String.fromCharCode(97 + x) + ' ';
+		}
+		for (let y = this.size - 1; y >= 0; --y) {
+			board += '\n' + y + ' '
+			for (let x = 0; x < this.size; ++x) {
+				let i = y * this.size + x;
+				board += '| ' + this.state[i] + ' ';
+			}
+		}
+		console.log(board);
 	}
     makeMove(from, to, shoot) {
         from = this.positionToIndex(from);
