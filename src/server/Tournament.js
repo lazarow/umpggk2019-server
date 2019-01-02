@@ -27,6 +27,7 @@ module.exports = class Tournament
         // checks if the last round is finished
         let round = this._._.rounds.find(round => round.finishedAt === null);
         if (typeof round !== 'undefined') {
+			log.warning('The last round has not be finished');
             return;
         }
         // saves the current data before every round

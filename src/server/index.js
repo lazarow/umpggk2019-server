@@ -47,7 +47,8 @@ server.on('connection', (socketClient) => {
 		log.info('The message from ' + socketClient.remoteAddress + ': ' + message);
 		// says `hi`
 		if (code == '100') {
-			if (/\s/g.test(options[0])) { // Checks if the name contains whitechars
+			// checks if the name contains whitechars
+			if (/\s/g.test(options[0])) {
 				socketClient.write('999 The player\'s name cannot contain whitespaces');
 			} else {
 				socketClient.playerIdx = tournament.addPlayer(options[0]);

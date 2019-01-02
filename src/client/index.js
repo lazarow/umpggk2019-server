@@ -1,5 +1,6 @@
 const net = require('net');
 const log = require('./../server/log.js')(__filename);
+const AmazonsGameBoard = require('./../server/AmazonsGameBoard.js');
 const uniqueNamesGenerator = require('unique-names-generator');
 const parameters = require('minimist')(process.argv.slice(2), {
 	default: {
@@ -17,9 +18,21 @@ for (let i = 0; i < parameters.nofclients; ++i) {
 		log.info(name + ' has been connected to the server successfully');
 		client.write('100 ' + name); // Say Hi to the server
 	});
+	client.board = null;
 	client.on('data', (data) => {
-		const message = data.toString('utf8');
+		const message = Buffer.isBuffer(data) ? data.toString().trim() : data.trim(),
+			  splitted = message.split(' '),
+			  code = splitted[0],
+			  options = splitted.slice(1);
 		log.debug(name + 'has received the message: ' + message);
+		if (code == '200') {
+			client.board = new AmazonsGameBoard(options[2]);
+			if (options[0] == 'white') {
+				
+			}
+		} else if (code == '220') {
+			
+		}
 	});
 	client.on('error', () => {
 		log.error(name + ' has encountered a connection error with the server');
