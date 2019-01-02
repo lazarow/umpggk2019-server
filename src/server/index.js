@@ -1,5 +1,5 @@
 const net = require('net');
-const readline = require('readline');
+const rl = require('./readline.js');
 const log = require('./log.js')(__filename);
 const TournamentRegistry = require('./TournamentRegistry.js');
 const Tournament = require('./Tournament.js');
@@ -9,12 +9,10 @@ const parameters = require('minimist')(process.argv.slice(2), {
 		register: './tournament-register.json',
 		system: 'roundrobin',
 		nofgames: 10,
-		timelimit: 2000
+		timelimit: 2000,
+		autostart: false,
+		restore: false
 	}
-});
-const rl = readline.createInterface({
-	input: process.stdin,
-	output: process.stdout
 });
 // creates the server
 const server = net.createServer();
@@ -23,16 +21,18 @@ log.info('The server is listening on the address: ' + server.address().address
 	+ ' and the port: ' + server.address().port);
 const socketClients = [];
 // creates the tournament
-const registry = new TournamentRegistry(parameters.register, {
+const registry = new TournamentRegistry(parameters.register + (parameters.restore ? '' : (+ new Date())), {
 	system: parameters.system,
 	nofGames: parameters.nofgames,
-	timelimit: parameters.timeLimit,
-	autostart: false
+	timeLimit: parameters.timelimit,
+	autostart: parameters.autostart
 });
 const tournament = new Tournament(socketClients, registry);
-rl.question('Press [ENTER] to start the next round ', (answer) => {
-	tournament.startUncompletedRound();
-	rl.close();
+rl.on('line', (input) => {
+	log.info(`The ADMINISTRATOR's command received: ${input}`);
+	if (input === 'start') {
+		tournament.startUncompletedRound();
+	}
 });
 // handles the server communication
 server.on('connection', (socketClient) => {

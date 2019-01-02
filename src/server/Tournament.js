@@ -1,7 +1,7 @@
 const robin = require('roundrobin');
-const readline = require('readline');
 const log = require('./log.js')(__filename);
 const AmazonsGameBoard = require('./AmazonsGameBoard.js');
+const rl = require('./readline.js');
 
 module.exports = class Tournament
 {
@@ -94,6 +94,7 @@ module.exports = class Tournament
 		if (this._._.rounds[roundIdx].matches.length > 0) {
 			this.startUncompletedMatches();
 		} else {
+			this._._.rounds[roundIdx].finishedAt = + new Date();
 			log.info('No matches were found hence the tournament is over');
 		}
     }
@@ -125,23 +126,16 @@ module.exports = class Tournament
                 match.startedAt = + new Date();
                 addresses.forEach(address => usedIPAddresses.push(address));
                 nofStartedMatches++;
+				log.info('The match #' + match.idx + ' has been started between '
+					+ this._._.players[match.players[0]].name + ' and ' + this._._.players[match.players[1]].name);
             }
         });
         // finally, if there is no running matches, finishes the current round
         if (nofStartedMatches === 0) {
             let round = this._._.rounds.find(round => round.finishedAt === null);
-            round.finishedAt + new Date();
-			if (this._._.opions.autostart == true) {
+            round.finishedAt = + new Date();
+			if (this._._.options.autostart == true) {
 				this.startUncompletedRound();
-			} else {
-				const rl = readline.createInterface({
-					input: process.stdin,
-					output: process.stdout
-				});
-				rl.question('Press [ENTER] to start the next round ', (answer) => {
-					this.startUncompletedRound();
-					rl.close();
-				});
 			}
         } else {
             this.startUncompletedGames(); // starts matches' games
