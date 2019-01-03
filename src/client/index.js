@@ -6,12 +6,13 @@ const parameters = require('minimist')(process.argv.slice(2), {
 	default: {
 		host: '127.0.0.1',
 		port: 6789,
-		nofclients: 1
+		nofclients: 1,
+        name: null
 	}
 });
 for (let i = 0; i < parameters.nofclients; ++i) {
 	const client = new net.Socket();
-	const name = uniqueNamesGenerator.generate();
+	const name = parameters.name === null ? uniqueNamesGenerator.generate() : parameters.name;
 	log.info(name + ' has been created');
 	client.connect(parameters.port, parameters.host, () => {
 		log.info(name + ' has been connected to the server successfully');

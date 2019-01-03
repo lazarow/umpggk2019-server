@@ -2,6 +2,12 @@ const robin = require('roundrobin');
 const log = require('./log.js')(__filename);
 const AmazonsGameBoard = require('./AmazonsGameBoard.js');
 
+String.prototype.pad = function(l, s = ' ', t = 0){
+    return s || (s = " "), (l -= this.length) > 0 ? (s = new Array(Math.ceil(l / s.length)
+        + 1).join(s)).substr(0, t = !t ? l : t == 1 ? 0 : Math.ceil(l / 2))
+        + this + s.substr(0, l - t) : this;
+};
+
 module.exports = class Tournament
 {
 	constructor(socketClients, tournamentRegistry) {
@@ -12,14 +18,26 @@ module.exports = class Tournament
 	}
     addPlayer(playerName) {
         let player = this._._.players.find(player => player.name === playerName);
-        if (typeof player === 'undefined' && this._._.isStarted === false) {
+        if (typeof player === 'undefined') {
+            if (this._._.isStarted === true) {
+                return -1;
+            }
             let playerIdx = this._._.players.length;
             this._._.players[playerIdx] = {
                 idx: playerIdx,
-                name: playerName
+                name: playerName,
+                points: 0,
+                sos: 0,
+                sodos: 0,
+                defeatedOpponents: [],
+                opponents: [],
+                byeRounds: [],
+                wins: 0,
+                loses: 0,
+                draws: 0
             };
             return playerIdx;
-        }   
+        }
         return player.idx;
     }
     startUncompletedRound() {
@@ -52,19 +70,51 @@ module.exports = class Tournament
 			if (roundIdx < roundRobinRounds.length) {
 				pairing = roundRobinRounds[roundIdx];
 			}
-		}
-        // @todo: add the swiss tournament system
+		} else if (this._._.options.system === 'mcmahon') {
+            // McMahon system tournament
+            let competitors = Object.keys(this._._.players);
+            competitors.sort((playerA, playerB) =>  {
+                if (this._._.players[playerA].points > this._._.players[playerB].points) return -1;
+                if (this._._.players[playerA].points < this._._.players[playerB].points) return 1;
+                if (this._._.players[playerA].sodos > this._._.players[playerB].sodos) return -1;
+                if (this._._.players[playerA].sodos < this._._.players[playerB].sodos) return 1;
+                if (this._._.players[playerA].sos > this._._.players[playerB].sos) return -1;
+                if (this._._.players[playerA].sos < this._._.players[playerB].sos) return 1;
+                return 0;
+            });
+            for (let i = 0; i < competitors.length; ++i) {
+                if (competitors[i] === -1) continue;
+                for (let j = i + 1; j < competitors.length; ++j) {
+                    if (competitors[j] === -1) continue;
+                    if (this._._.players[competitors[i]].opponents.indexOf(competitors[j]) !== -1) continue;
+                    pairing.push([competitors[i], competitors[j]]);
+                    competitors[i] = -1;
+                    competitors[j] = -1;
+                    break;
+                }
+            }
+            if (pairing.length > 0) {
+                for (let i = 0; i < competitors.length; ++i) {
+                    if (competitors[i] === -1) continue;
+                    this._._.players[competitors[i]].points += 0.5; // bye
+                    this._._.players[competitors[i]].byeRounds.push(roundIdx);
+                }
+            }
+        }
         // creates matches and games
         for (let competitors of pairing) {
             let matchIdx = this._._.matches.length;
             this._._.matches[matchIdx] = {
                 idx: matchIdx,
                 roundIdx: roundIdx, // reduces searching
-				players: competitors,
+				players: [competitors[0], competitors[1]],
+                points: [0, 0],
 				startedAt: null,
 				finishedAt: null,
 				games: []
 			};
+            this._._.players[competitors[0]].opponents.push(competitors[1]);
+            this._._.players[competitors[1]].opponents.push(competitors[0]);
 			for (let i = 0; i < this._._.options.nofGames; ++i) {
                 let gameIdx = this._._.games.length;
 				this._._.games[gameIdx] = {
@@ -96,6 +146,42 @@ module.exports = class Tournament
 		} else {
 			this._._.rounds[roundIdx].finishedAt = + new Date();
 			log.info('No matches were found hence the tournament is over');
+            let standinds = Object.keys(this._._.players);
+            standinds.sort((playerA, playerB) =>  {
+                if (this._._.players[playerA].points > this._._.players[playerB].points) return -1;
+                if (this._._.players[playerA].points < this._._.players[playerB].points) return 1;
+                if (this._._.players[playerA].sodos > this._._.players[playerB].sodos) return -1;
+                if (this._._.players[playerA].sodos < this._._.players[playerB].sodos) return 1;
+                if (this._._.players[playerA].sos > this._._.players[playerB].sos) return -1;
+                if (this._._.players[playerA].sos < this._._.players[playerB].sos) return 1;
+                return 0;
+            });
+            
+            let maxPlayerNameLength = null;
+            for (let i = 0; i < standinds.length; ++i) {
+                if (maxPlayerNameLength === null || this._._.players[standinds[i]].name.length > maxPlayerNameLength) {
+                    maxPlayerNameLength = this._._.players[standinds[i]].name.length;
+                }
+            }
+            console.log(' #| ' + (' '.repeat(maxPlayerNameLength)) + ' |  W |  D |  L | Points | SODOS | SOS');
+            for (let i = 0; i < standinds.length; ++i) {
+                let player = this._._.players[standinds[i]];
+                console.log(
+                    (i + 1 + '').pad(2)
+                    + '| ' + player.name + ' '.repeat(maxPlayerNameLength - player.name.length)
+                    + ' | ' + (player.wins + '').pad(2)
+                    + ' | ' + (player.draws + '').pad(2)
+                    + ' | ' + (player.loses + '').pad(2)
+                    + ' | ' + (player.points + '').pad(6)
+                    + ' | ' + (player.sodos + '').pad(5)
+                    + ' | ' + (player.sos + '').pad(3)
+                );
+                // sends the final standinds
+                let socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == standinds[i]);
+                if(typeof socketClient !== 'undefined') {
+                    socketClient.write('299 ' + (i + 1));
+                }
+            }
 		}
     }
     startUncompletedMatches() {
@@ -105,7 +191,7 @@ module.exports = class Tournament
         this._._.matches.filter(match => match.startedAt !== null && match.finishedAt === null).forEach(match => {
             // checks IP addresses from running matches
             match.players.forEach(playerIdx => {
-                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == playerIdx);
+                let socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == playerIdx);
                 if(typeof socketClient !== 'undefined') {
                     usedIPAddresses.push(socketClient.remoteAddress);
                 }
@@ -117,7 +203,7 @@ module.exports = class Tournament
             let addresses = [];
             // checks IP addresses from upcoming matches
             match.players.forEach(playerIdx => {
-                let socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == playerIdx);
+                let socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == playerIdx);
                 if(typeof socketClient !== 'undefined') {
                     addresses.push(socketClient.remoteAddress);
                 }
@@ -134,6 +220,11 @@ module.exports = class Tournament
         if (nofStartedMatches === 0) {
             let round = this._._.rounds.find(round => round.finishedAt === null);
             round.finishedAt = + new Date();
+            // recalculates tie breakers
+            for (let player of this._._.players) {
+                player.sos = player.opponents.reduce((carry, playerIdx) => carry + this._._.players[playerIdx].points, 0);
+                player.sodos = player.defeatedOpponents.reduce((carry, playerIdx) => carry + this._._.players[playerIdx].points, 0);
+            }
             // if the autostart flag is on, then the next round will be started
 			if (this._._.options.autostart == true) {
 				this.startUncompletedRound();
@@ -154,8 +245,8 @@ module.exports = class Tournament
                         + this._._.players[this._._.games[gameIdx].white].name + ' as white and '
                         + this._._.players[this._._.games[gameIdx].black].name + ' as black');
                     // finds corresponding socket clients
-                    const whiteSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].white);
-                    const blackSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].black);
+                    const whiteSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == this._._.games[gameIdx].white);
+                    const blackSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == this._._.games[gameIdx].black);
 					// both players are disconnected
                     if (whiteSocketClient === undefined && blackSocketClient === undefined) {
 						this._._.games[gameIdx].finishedAt = + new Date();
@@ -179,8 +270,10 @@ module.exports = class Tournament
                         this.boards[gameIdx] = new AmazonsGameBoard(this._._.options.initialBoard);
                         this._._.games[gameIdx].initialBoard = this._._.options.initialBoard;
                         this._._.games[gameIdx].currentBoard = this.boards[gameIdx].state.toString();
-						blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
-                        whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+						setTimeout(() => {
+                            blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+                            whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+                        }, 50); // i've added a little timeout to be sure that all players are ready
 						hasUnfinishedGame = true;
 						break; // starts only one game
 					}
@@ -194,6 +287,30 @@ module.exports = class Tournament
             // if there is no started games then finishes the match
             if (hasUnfinishedGame === false) {
                 match.finishedAt = + new Date();
+                log.info('The match #' + match.idx + ' has been finished');
+                // sums up points
+                for (let player in match.players) {
+                    match.points[player] = match.games.reduce((carry, gameIdx) => {
+                        let game = this._._.games[gameIdx];
+                        return carry + (game.winner !== null && game[game.winner] == match.players[player] ? 1 : 0);
+                    }, 0);
+                }
+                if (match.points[0] === match.points[1] && match.points[0] > 0) {
+                    this._._.players[match.players[0]].points += 0.5;
+                    this._._.players[match.players[1]].points += 0.5;
+                    this._._.players[match.players[0]].draws += 1;
+                    this._._.players[match.players[1]].draws += 1;
+                } else if (match.points[0] > match.points[1]) {
+                    this._._.players[match.players[0]].points += 1;
+                    this._._.players[match.players[0]].defeatedOpponents.push(match.players[1]);
+                    this._._.players[match.players[0]].wins += 1;
+                    this._._.players[match.players[1]].loses += 1;
+                } else if (match.points[1] > match.points[0]) {
+                    this._._.players[match.players[1]].points += 1;
+                    this._._.players[match.players[1]].defeatedOpponents.push(match.players[0]);
+                    this._._.players[match.players[0]].loses += 1;
+                    this._._.players[match.players[1]].wins += 1;
+                }
 				this.startUncompletedMatches();
             }
         });
@@ -206,8 +323,8 @@ module.exports = class Tournament
                 const winner = game.playerOnMove === 'white' ? 'black' : 'white';
                 const loser = game.playerOnMove;
                 // since JS is single-threaded hence the socket clients should be available
-                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
-                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[loser]);
+                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[winner]);
+                const loserSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[loser]);
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
@@ -241,7 +358,7 @@ module.exports = class Tournament
                 game.currentBoard = this.boards[game.idx].state.toString();
                 game.moves.push(move);
                 // the player should be available
-                const socketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[game.playerOnMove]);
+                const socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[game.playerOnMove]);
                 socketClient.write('220 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
             } catch (e) {
 				let winner, loser;
@@ -249,7 +366,6 @@ module.exports = class Tournament
                     winner = game.playerOnMove;
                     loser = game.playerOnMove === 'white' ? 'black' : 'white';
                     game.wonBy = 'Wygrana zgodnie z zasadami';
-                    this.boards[game.idx].printFullBoard();
                 } else if (e[0] == 2) { // an invalid move has been played
                     winner = game.playerOnMove === 'white' ? 'black' : 'white';
                     loser = game.playerOnMove;
@@ -260,8 +376,8 @@ module.exports = class Tournament
                     game.wonBy = 'Wygrana zgodnie z zasadami (zagranie nie w swojej turze)';
                 }				
                 // finishes the game and starts upcoming games
-                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
-                const loserSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[loser]);
+                const winnerSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[winner]);
+                const loserSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[loser]);
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
@@ -286,7 +402,7 @@ module.exports = class Tournament
             const winner = game.white == playerIdx ? 'black' : 'white';
             const loser = game.white == playerIdx ? 'white' : 'black';
             // the socket client should be available
-            const winnerSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == game[winner]);
+            const winnerSocketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[winner]);
             game.finishedAt = + new Date();
             game.winner = winner;
             game.loser = loser;

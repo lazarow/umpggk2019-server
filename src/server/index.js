@@ -38,6 +38,7 @@ rl.on('line', (input) => {
 });
 // handles the server communication
 server.on('connection', (socketClient) => {
+	socketClient.live = true;
 	socketClient.playerIdx = null;
     socketClients.push(socketClient);
 	log.info('The new connection has been established by the initiator ' + socketClient.remoteAddress);
@@ -66,11 +67,13 @@ server.on('connection', (socketClient) => {
 	socketClient.on('close', () => {
 		log.warning('The connection is lost from the initiator ' + socketClient.remoteAddress + ', player idx = '
             + socketClient.playerIdx);
+        socketClient.live = false;
 		tournament.disconnect(socketClient.playerIdx);
 	});
 	socketClient.on('error', (e) => {
 		log.error('The connection is abruptly lost from the initiator ' + socketClient.remoteAddress + ', player idx = '
             + socketClient.playerIdx);
+        socketClient.live = false;
 		tournament.disconnect(socketClient.playerIdx);
 	});
 });
