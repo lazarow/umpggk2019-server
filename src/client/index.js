@@ -9,7 +9,6 @@ const parameters = require('minimist')(process.argv.slice(2), {
 		nofclients: 1
 	}
 });
-
 for (let i = 0; i < parameters.nofclients; ++i) {
 	const client = new net.Socket();
 	const name = uniqueNamesGenerator.generate();
@@ -24,14 +23,41 @@ for (let i = 0; i < parameters.nofclients; ++i) {
 			  splitted = message.split(' '),
 			  code = splitted[0],
 			  options = splitted.slice(1);
-		log.debug(name + 'has received the message: ' + message);
+		log.debug(name + ' has received the message: ' + message);
 		if (code == '200') {
 			client.board = new AmazonsGameBoard(options[2]);
 			if (options[0] == 'white') {
-				
+                if (client.board.availableMoves.length > 0) {
+                    let move =
+                        client.board.availableMoves[Math.floor(Math.random() * client.board.availableMoves.length)]
+                        .slice(0);
+                    move[0] = client.board.indexToPosition(move[0]);
+                    move[1] = client.board.indexToPosition(move[1]);
+                    move[2] = client.board.indexToPosition(move[2]);
+                    try {
+                        client.board.makeMove(move[0], move[1], move[2]);
+                    } catch (e) {
+                    }
+                    client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                    log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                }
 			}
 		} else if (code == '220') {
-			
+			client.board.makeMove(options[0], options[1], options[2]);
+            if (client.board.availableMoves.length > 0) {
+                let move =
+                    client.board.availableMoves[Math.floor(Math.random() * client.board.availableMoves.length)]
+                    .slice(0);
+                move[0] = client.board.indexToPosition(move[0]);
+                move[1] = client.board.indexToPosition(move[1]);
+                move[2] = client.board.indexToPosition(move[2]);
+                try {
+                    client.board.makeMove(move[0], move[1], move[2]);
+                } catch (e) {
+                }
+                client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+            }
 		}
 	});
 	client.on('error', () => {

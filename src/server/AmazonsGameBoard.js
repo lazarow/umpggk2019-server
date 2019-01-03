@@ -1,3 +1,4 @@
+const log = require('./log.js')(__filename);
 /**
  * Errors codes:
  * 1 -> no moves left for the player
@@ -47,7 +48,7 @@ module.exports = class AmazonsGameBoard
 	indexToPosition(index) {
 		let x = index % this.size;
 		let y = Math.floor(index / this.size);
-        return String.fromCharCode(97 + y) + '' + (x + 1);
+        return String.fromCharCode(97 + x) + '' + (y + 1);
     }
     checkIsMoveAvailable(from, to, shoot) {
 		for (let move of this.availableMoves) {
@@ -74,7 +75,7 @@ module.exports = class AmazonsGameBoard
 			board += '| ' + String.fromCharCode(97 + x) + ' ';
 		}
 		for (let y = this.size - 1; y >= 0; --y) {
-			board += '\n' + y + ' '
+			board += '\n' + (y < 9 ? ' ' : '') + (y + 1);
 			for (let x = 0; x < this.size; ++x) {
 				let i = y * this.size + x;
 				board += '| ' + this.state[i] + ' ';

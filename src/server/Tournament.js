@@ -1,7 +1,6 @@
 const robin = require('roundrobin');
 const log = require('./log.js')(__filename);
 const AmazonsGameBoard = require('./AmazonsGameBoard.js');
-const rl = require('./readline.js');
 
 module.exports = class Tournament
 {
@@ -13,7 +12,7 @@ module.exports = class Tournament
 	}
     addPlayer(playerName) {
         let player = this._._.players.find(player => player.name === playerName);
-        if (typeof player === 'undefined') {
+        if (typeof player === 'undefined' && this._._.isStarted === false) {
             let playerIdx = this._._.players.length;
             this._._.players[playerIdx] = {
                 idx: playerIdx,
@@ -135,9 +134,11 @@ module.exports = class Tournament
         if (nofStartedMatches === 0) {
             let round = this._._.rounds.find(round => round.finishedAt === null);
             round.finishedAt = + new Date();
+            // if the autostart flag is on, then the next round will be started
 			if (this._._.options.autostart == true) {
 				this.startUncompletedRound();
 			}
+            // if not wait for the administrator's command
         } else {
             this.startUncompletedGames(); // starts matches' games
         }
@@ -149,6 +150,9 @@ module.exports = class Tournament
             for (let gameIdx of match.games) {
                 if (this._._.games[gameIdx].startedAt === null) {
 					this._._.games[gameIdx].startedAt = + new Date(); // starts the game
+                    log.debug('The game #' + gameIdx + ' has been started between '
+                        + this._._.players[this._._.games[gameIdx].white].name + ' as white and '
+                        + this._._.players[this._._.games[gameIdx].black].name + ' as black');
                     // finds corresponding socket clients
                     const whiteSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].white);
                     const blackSocketClient = this.socketClients.find(socketClient => socketClient.playerIdx == this._._.games[gameIdx].black);
@@ -175,11 +179,16 @@ module.exports = class Tournament
                         this.boards[gameIdx] = new AmazonsGameBoard(this._._.options.initialBoard);
                         this._._.games[gameIdx].initialBoard = this._._.options.initialBoard;
                         this._._.games[gameIdx].currentBoard = this.boards[gameIdx].state.toString();
-						whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
 						blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+                        whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
 						hasUnfinishedGame = true;
 						break; // starts only one game
 					}
+                    if (this._._.games[gameIdx].wonBy !== null) {
+                        log.debug('The game #' + gameIdx + ' has been finished, '
+                            + 'the winner is ' + this._._.games[gameIdx].winner + ' and the game is won by: '
+                            + this._._.games[gameIdx].wonBy);
+                    }
 				}
             }
             // if there is no started games then finishes the match
@@ -203,8 +212,11 @@ module.exports = class Tournament
                 game.winner = winner;
                 game.loser = loser;
                 game.wonBy = 'Przekroczenie czasu na ruch przeciwnika';
-                winnerSocketClient.write(231);
-                loserSocketClient.write(241);
+                winnerSocketClient.write('231');
+                loserSocketClient.write('241');
+                log.debug('The game #' + game.idx + ' has been finished, '
+                    + 'the winner is ' + game.winner + ' and the game is won by: '
+                    + game.wonBy);
                 // because the game is finished, checks other unfinished games
                 this.startUncompletedGames();
             }
@@ -237,6 +249,7 @@ module.exports = class Tournament
                     winner = game.playerOnMove;
                     loser = game.playerOnMove === 'white' ? 'black' : 'white';
                     game.wonBy = 'Wygrana zgodnie z zasadami';
+                    this.boards[game.idx].printFullBoard();
                 } else if (e[0] == 2) { // an invalid move has been played
                     winner = game.playerOnMove === 'white' ? 'black' : 'white';
                     loser = game.playerOnMove;
@@ -252,8 +265,11 @@ module.exports = class Tournament
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
-                winnerSocketClient.write(230);
-                loserSocketClient.write(240);
+                winnerSocketClient.write('230');
+                loserSocketClient.write('240');
+                log.debug('The game #' + game.idx + ' has been finished, '
+                    + 'the winner is ' + game.winner + ' and the game is won by: '
+                    + game.wonBy);
                 this.startUncompletedGames();
             }
         }
@@ -275,7 +291,10 @@ module.exports = class Tournament
             game.winner = winner;
             game.loser = loser;
             game.wonBy = 'Wygrana przez rozłączenie się przeciwnika';
-            winnerSocketClient.write(232);
+            winnerSocketClient.write('232');
+            log.debug('The game #' + game.idx + ' has been finished, '
+                + 'the winner is ' + game.winner + ' and the game is won by: '
+                + game.wonBy);
             this.startUncompletedGames();
         }
     }

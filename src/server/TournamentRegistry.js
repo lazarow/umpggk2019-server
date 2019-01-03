@@ -10,11 +10,12 @@ module.exports = class TournamentRegistry
             this._ = {
                 isStarted: false,
                 options: Object.assign({
-                    system: 'roundrobin',
-                    nofGames: 10,
+                    system: 'roundrobin', // the system algorithm creates pairing for each round
+                    nofGames: 10, // the number of games in each match
                     initialBoard: '...w..w.......................w........w....................b........b.......................b..b...',
-                    timeLimit: 2000,
-					autostart: false
+                    timeLimit: 2000, // the time limit per move in ms
+					autostart: false, // starts round automatically (except the first round)
+                    nosaving: false
                 }, options),
                 players: [],
                 rounds: [],
@@ -25,6 +26,8 @@ module.exports = class TournamentRegistry
         this.save();
     }
     save() {
-        fs.writeFileSync(this.filepath, JSON.stringify(this._), 'utf8');
+        if (this._.options.nosaving == false) {
+            fs.writeFileSync(this.filepath, JSON.stringify(this._), 'utf8');
+        }
     }
 }

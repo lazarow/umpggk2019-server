@@ -11,6 +11,7 @@ const parameters = require('minimist')(process.argv.slice(2), {
 		nofgames: 10,
 		timelimit: 2000,
 		autostart: false,
+		nosaving: false,
 		restore: false
 	}
 });
@@ -25,7 +26,8 @@ const registry = new TournamentRegistry(parameters.register + (parameters.restor
 	system: parameters.system,
 	nofGames: parameters.nofgames,
 	timeLimit: parameters.timelimit,
-	autostart: parameters.autostart
+	autostart: parameters.autostart,
+	nosaving: parameters.nosaving
 });
 const tournament = new Tournament(socketClients, registry);
 rl.on('line', (input) => {
@@ -37,6 +39,7 @@ rl.on('line', (input) => {
 // handles the server communication
 server.on('connection', (socketClient) => {
 	socketClient.playerIdx = null;
+    socketClients.push(socketClient);
 	log.info('The new connection has been established by the initiator ' + socketClient.remoteAddress);
 	// handles the client's messages
 	socketClient.on('data', (data) => {
@@ -52,22 +55,22 @@ server.on('connection', (socketClient) => {
 				socketClient.write('999 The player\'s name cannot contain whitespaces');
 			} else {
 				socketClient.playerIdx = tournament.addPlayer(options[0]);
-				log.debug('The connection from ' + socketClient.remoteAddress + ' is registered as the player: ' + options[0]);
 			}
 		}
 		// makes a move
 		else if (code == '210') {
-			tournament.applyMove(socketClient.playerIdx, options);
-			log.debug('The connection from ' + socketClient.remoteAddress + ' made the move: ' + options.join('-'));
+            tournament.applyMove(socketClient.playerIdx, options);
 		}
 	});
 	// handles errors
 	socketClient.on('close', () => {
-		log.warning('The connection is lost from the initiator ' + socketClient.remoteAddress);
+		log.warning('The connection is lost from the initiator ' + socketClient.remoteAddress + ', player idx = '
+            + socketClient.playerIdx);
 		tournament.disconnect(socketClient.playerIdx);
 	});
-	socketClient.on('error', () => {
-		log.error('The connection is abruptly lost from the initiator ' + socketClient.remoteAddress);
+	socketClient.on('error', (e) => {
+		log.error('The connection is abruptly lost from the initiator ' + socketClient.remoteAddress + ', player idx = '
+            + socketClient.playerIdx);
 		tournament.disconnect(socketClient.playerIdx);
 	});
 });
