@@ -61,6 +61,8 @@ start
 Turniej składa się z rund, których liczba wyliczana jest w zależności od liczby zawodników i systemu. Rundy
 składają się z meczy, mecze składają się z gier. Wynik meczu określany jest na podstawie stosunku wygranych gier pomiędzy zawodnikami.
 
+Turniej rozgrywany jest automatycznie, kolejne rundy uruchamiane są ręcznie (za pomocą komendy `start`) lub automatycznie (uruchomienie serwera z parameterem `--autostart`).
+
 ## Protokół komunikacyjny
 
 Protokół komunikacyjny oparty jest o standardowe gniazdka sieciowe, każda komenda wysyłana z lub do serwera powinna kończyć się znakiem nowej linii. Używane w protokole koordynaty pozycji
