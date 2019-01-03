@@ -1,4 +1,4 @@
-# Serwer zawodów z UMPGGK 2019
+# Serwer zawodów UMPGGK 2019
 
 Uczelniane Mistrzostwa Programów Grających w gry Kombinatoryczne są cyklicznym konkursem rozgrywanym w Instytucie Informatyki Uniwersytetu Śląskiego. 
 Niniejsze repozytorium zawiera kod serwera służącego do rozegrania gier turniejowych w grze __Amazons__ w V edycji UMPGGK.
