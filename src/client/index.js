@@ -6,7 +6,7 @@ const parameters = require('minimist')(process.argv.slice(2), {
 	default: {
 		host: '127.0.0.1',
 		port: 6789,
-		nofclients: 1,
+		nofclients: 2,
         name: null
 	}
 });
