@@ -84,13 +84,13 @@ Przykłady:
 ```
 200 [opis gry]		// Komunikat oznacza rozpoczęcie nowej gry, należy oczekiwać koloru gracza rozmiarow planszy oraz pozycji początkowej
 220 [pozycja]		// Nowa pozycja przeciwnika, serwer oczekuje na Twój ruch, zgodnie z pozycją wyzej
-230				// Wygrałeś wg. zasad
-231				// Wygrałeś przez przekroczenie czasu (przeciwnika)
-232				// Wygrałeś przez rozłączenie się przeciwnika
-240				// Przegrałeś wg. zasad
-241				// Przegrałeś przez przekroczenie czasu
+230			// Wygrałeś wg. zasad
+231			// Wygrałeś przez przekroczenie czasu (przeciwnika)
+232			// Wygrałeś przez rozłączenie się przeciwnika
+240			// Przegrałeś wg. zasad
+241			// Przegrałeś przez przekroczenie czasu
 299 [miejsce]		// Koniec turnieju
-999	[opis]		// Błąd komendy, opis powinien wyjaśnić przyczyne
+999 [opis]		// Błąd komendy, opis powinien wyjaśnić przyczyne
 ```
 
 Przykłady:
