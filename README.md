@@ -117,6 +117,6 @@ Parametry (wszystkie parametry są opcjonalne)
 
 ## Uwaga
 
-Serwer po testach wygląda na ukończony aczkolwiek autor zastrzega sobie prawo do jego modyfikacji.
+Serwer jest ukończony aczkolwiek autor zastrzega sobie prawo do jego modyfikacji.
 
 
