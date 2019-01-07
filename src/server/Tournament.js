@@ -128,11 +128,13 @@ module.exports = class Tournament
 					wonBy: null,
 					startedAt: null,
 					finishedAt: null,
+					lastMoveAt: null,
                     playerOnMove: null,
                     moveTimeout: null,
                     initialBoard: null,
                     currentBoard: null,
-                    moves: []
+                    moves: [],
+					times: []
 				};
 				this._._.matches[matchIdx].games.push(gameIdx);
 			}
@@ -241,6 +243,7 @@ module.exports = class Tournament
             for (let gameIdx of match.games) {
                 if (this._._.games[gameIdx].startedAt === null) {
 					this._._.games[gameIdx].startedAt = + new Date(); // starts the game
+					this._._.games[gameIdx].lastMoveAt = this._._.games[gameIdx].startedAt;
                     log.debug('The game #' + gameIdx + ' has been started between '
                         + this._._.players[this._._.games[gameIdx].white].name + ' as white and '
                         + this._._.players[this._._.games[gameIdx].black].name + ' as black');
@@ -273,7 +276,7 @@ module.exports = class Tournament
 						setTimeout(() => {
                             blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
                             whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
-                        }, 50); // i've added a little timeout to be sure that all players are ready
+                        }, 250); // i've added a little timeout to be sure that all players are ready
 						hasUnfinishedGame = true;
 						break; // starts only one game
 					}
@@ -357,9 +360,13 @@ module.exports = class Tournament
                 game.playerOnMove = game.playerOnMove === 'white' ? 'black' : 'white';
                 game.currentBoard = this.boards[game.idx].state.toString();
                 game.moves.push(move);
+                game.times.push((+ new Date()) - game.lastMoveAt);
+				game.lastMoveAt = (+ new Date());
                 // the player should be available
                 const socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[game.playerOnMove]);
                 socketClient.write('220 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+				// resets the timeout
+				game.moveTimeout = (+ new Date()) + this._._.options.timeLimit;
             } catch (e) {
 				let winner, loser;
                 if (e[0] == 1) { // no moves for the next player
