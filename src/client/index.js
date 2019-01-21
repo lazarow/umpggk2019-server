@@ -16,7 +16,7 @@ for (let i = 0; i < parameters.nofclients; ++i) {
 	log.info(name + ' has been created');
 	client.connect(parameters.port, parameters.host, () => {
 		log.info(name + ' has been connected to the server successfully');
-		client.write('100 ' + name); // Say Hi to the server
+		client.write('100 ' + name + '\n'); // Say Hi to the server
 	});
 	client.board = null;
 	client.on('data', (data) => {
@@ -39,7 +39,7 @@ for (let i = 0; i < parameters.nofclients; ++i) {
                         client.board.makeMove(move[0], move[1], move[2]);
                     } catch (e) {
                     }
-                    client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                    client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2] + '\n');
                     log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
                 }
 			}
@@ -56,7 +56,7 @@ for (let i = 0; i < parameters.nofclients; ++i) {
                     client.board.makeMove(move[0], move[1], move[2]);
                 } catch (e) {
                 }
-                client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2] + '\n');
                 log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
             }
 		}

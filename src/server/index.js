@@ -42,6 +42,9 @@ server.on('connection', (socketClient) => {
 	socketClient.playerIdx = null;
     socketClients.push(socketClient);
 	log.info('The new connection has been established by the initiator ' + socketClient.remoteAddress);
+	socketClient.writeln = function (message) {
+		this.write(message.trim() + "\n");
+	};
 	// handles the client's messages
 	socketClient.on('data', (data) => {
 		const message = Buffer.isBuffer(data) ? data.toString().trim() : data.trim(),

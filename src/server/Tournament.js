@@ -181,7 +181,7 @@ module.exports = class Tournament
                 // sends the final standinds
                 let socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == standinds[i]);
                 if(typeof socketClient !== 'undefined') {
-                    socketClient.write('299 ' + (i + 1));
+                    socketClient.writeln('299 ' + (i + 1));
                 }
             }
 		}
@@ -259,13 +259,13 @@ module.exports = class Tournament
                         this._._.games[gameIdx].winner = 'black';
                         this._._.games[gameIdx].loser = 'white';
                         this._._.games[gameIdx].wonBy = 'Brak połączenia przeciwnika';
-						blackSocketClient.write('232');
+						blackSocketClient.writeln('232');
 					} else if (blackSocketClient === undefined) { // black player is disconnected
 						this._._.games[gameIdx].finishedAt = + new Date();
 						this._._.games[gameIdx].winner = 'white';
 						this._._.games[gameIdx].loser = 'black';
 						this._._.games[gameIdx].wonBy = 'Brak połączenia przeciwnika';
-						whiteSocketClient.write('232');
+						whiteSocketClient.writeln('232');
 					} else {
                         this._._.games[gameIdx].playerOnMove = 'white';
                         this._._.games[gameIdx].moveTimeout = (+ new Date()) + this._._.options.timeLimit;
@@ -274,8 +274,8 @@ module.exports = class Tournament
                         this._._.games[gameIdx].initialBoard = this._._.options.initialBoard;
                         this._._.games[gameIdx].currentBoard = this.boards[gameIdx].state.toString();
 						setTimeout(() => {
-                            blackSocketClient.write('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
-                            whiteSocketClient.write('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+                            blackSocketClient.writeln('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
+                            whiteSocketClient.writeln('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
                         }, 250); // i've added a little timeout to be sure that all players are ready
 						hasUnfinishedGame = true;
 						break; // starts only one game
@@ -332,8 +332,8 @@ module.exports = class Tournament
                 game.winner = winner;
                 game.loser = loser;
                 game.wonBy = 'Przekroczenie czasu na ruch przeciwnika';
-                winnerSocketClient.write('231');
-                loserSocketClient.write('241');
+                winnerSocketClient.writeln('231');
+                loserSocketClient.writeln('241');
                 log.debug('The game #' + game.idx + ' has been finished, '
                     + 'the winner is ' + game.winner + ' and the game is won by: '
                     + game.wonBy);
@@ -364,7 +364,7 @@ module.exports = class Tournament
 				game.lastMoveAt = (+ new Date());
                 // the player should be available
                 const socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == game[game.playerOnMove]);
-                socketClient.write('220 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+                socketClient.writeln('220 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
 				// resets the timeout
 				game.moveTimeout = (+ new Date()) + this._._.options.timeLimit;
             } catch (e) {
@@ -388,8 +388,8 @@ module.exports = class Tournament
                 game.finishedAt = + new Date();
                 game.winner = winner;
                 game.loser = loser;
-                winnerSocketClient.write('230');
-                loserSocketClient.write('240');
+                winnerSocketClient.writeln('230');
+                loserSocketClient.writeln('240');
                 log.debug('The game #' + game.idx + ' has been finished, '
                     + 'the winner is ' + game.winner + ' and the game is won by: '
                     + game.wonBy);
@@ -414,7 +414,7 @@ module.exports = class Tournament
             game.winner = winner;
             game.loser = loser;
             game.wonBy = 'Wygrana przez rozłączenie się przeciwnika';
-            winnerSocketClient.write('232');
+            winnerSocketClient.writeln('232');
             log.debug('The game #' + game.idx + ' has been finished, '
                 + 'the winner is ' + game.winner + ' and the game is won by: '
                 + game.wonBy);
