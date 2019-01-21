@@ -47,24 +47,27 @@ server.on('connection', (socketClient) => {
 	};
 	// handles the client's messages
 	socketClient.on('data', (data) => {
-		const message = Buffer.isBuffer(data) ? data.toString().trim() : data.trim(),
-			  splitted = message.split(' '),
-			  code = splitted[0],
-			  options = splitted.slice(1);
-		log.info('The message from ' + socketClient.remoteAddress + ': ' + message);
-		// says `hi`
-		if (code == '100') {
-			// checks if the name contains whitechars
-			if (/\s/g.test(options[0])) {
-				socketClient.write('999 The player\'s name cannot contain whitespaces');
-			} else {
-				socketClient.playerIdx = tournament.addPlayer(options[0]);
-			}
-		}
-		// makes a move
-		else if (code == '210') {
-            tournament.applyMove(socketClient.playerIdx, options);
-		}
+		const received = Buffer.isBuffer(data) ? data.toString().trim() : data.trim();
+        log.info('The message from ' + socketClient.remoteAddress + ': ' + received);
+        for (let message of received.split('\n')) {
+            message = message.trim();
+            const splitted = message.split(' '),
+                  code = splitted[0],
+                  options = splitted.slice(1);
+            // says `hi`
+            if (code == '100' && /^100 [^\s]+$/.test(message)) {
+                // checks if the name contains whitechars
+                if (/\s/g.test(options[0])) {
+                    socketClient.write('999 The player\'s name cannot contain whitespaces');
+                } else {
+                    socketClient.playerIdx = tournament.addPlayer(options[0]);
+                }
+            }
+            // makes a move
+            else if (code == '210' && /^210 [a-z][0-9]{1,2} [a-z][0-9]{1,2} [a-z][0-9]{1,2}$/.test(message)) {
+                tournament.applyMove(socketClient.playerIdx, options);
+            }
+        }
 	});
 	// handles errors
 	socketClient.on('close', () => {
