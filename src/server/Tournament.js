@@ -176,7 +176,7 @@ module.exports = class Tournament
         let standinds = this.getCurrentStandings();
         let maxPlayerNameLength = null;
         for (let i = 0; i < standinds.length; ++i) {
-            let idx = '' + i;
+            let idx = '' + standinds[i];
             if (maxPlayerNameLength === null || (this._._.players[standinds[i]].name.length + idx.length + 3) > maxPlayerNameLength) {
                 maxPlayerNameLength = this._._.players[standinds[i]].name.length + idx.length + 3;
             }
@@ -184,7 +184,7 @@ module.exports = class Tournament
         console.log(' #| ' + (' '.repeat(maxPlayerNameLength)) + ' |  W |  D |  L | Points | SODOS | SOS');
         for (let i = 0; i < standinds.length; ++i) {
             let player = this._._.players[standinds[i]];
-            let idx = '' + i;
+            let idx = '' + standinds[i];
             console.log(
                 (i + 1 + '').pad(2)
                 + '| ' + player.name + ' (' + idx + ')' + ' '.repeat(maxPlayerNameLength - idx.length - 3 - player.name.length)
