@@ -144,7 +144,7 @@ module.exports = class Tournament
 			+ ' matches');
 		// starts matches if available
 		if (this._._.rounds[roundIdx].matches.length > 0) {
-			this.startUncompletedMatches();
+			this.startUncompletedMatches(roundIdx);
 		} else {
 			this._._.rounds[roundIdx].finishedAt = + new Date();
 			log.info('No matches were found hence the tournament is over');
@@ -176,16 +176,18 @@ module.exports = class Tournament
         let standinds = this.getCurrentStandings();
         let maxPlayerNameLength = null;
         for (let i = 0; i < standinds.length; ++i) {
-            if (maxPlayerNameLength === null || this._._.players[standinds[i]].name.length > maxPlayerNameLength) {
-                maxPlayerNameLength = this._._.players[standinds[i]].name.length;
+            let idx = '' + i;
+            if (maxPlayerNameLength === null || (this._._.players[standinds[i]].name.length + idx.length + 3) > maxPlayerNameLength) {
+                maxPlayerNameLength = this._._.players[standinds[i]].name.length + idx.length + 3;
             }
         }
         console.log(' #| ' + (' '.repeat(maxPlayerNameLength)) + ' |  W |  D |  L | Points | SODOS | SOS');
         for (let i = 0; i < standinds.length; ++i) {
             let player = this._._.players[standinds[i]];
+            let idx = '' + i;
             console.log(
                 (i + 1 + '').pad(2)
-                + '| ' + player.name + ' '.repeat(maxPlayerNameLength - player.name.length)
+                + '| ' + player.name + ' (' + idx + ')' + ' '.repeat(maxPlayerNameLength - idx.length - 3 - player.name.length)
                 + ' | ' + (player.wins + '').pad(2)
                 + ' | ' + (player.draws + '').pad(2)
                 + ' | ' + (player.loses + '').pad(2)
@@ -195,11 +197,12 @@ module.exports = class Tournament
             );
         }
     }
-    startUncompletedMatches() {
+    startUncompletedMatches(roundIdx) {
         let nofStartedMatches = 0;
 		let usedIPAddresses = []; // holds IP addresses that can't be used
+        let startedMatches = [];
         // firstly, handles all running games
-        this._._.matches.filter(match => match.startedAt !== null && match.finishedAt === null).forEach(match => {
+        this._._.matches.filter(match => match.roundIdx === roundIdx && match.startedAt !== null && match.finishedAt === null).forEach(match => {
             // checks IP addresses from running matches
             match.players.forEach(playerIdx => {
                 let socketClient = this.socketClients.find(socketClient => socketClient.live && socketClient.playerIdx == playerIdx);
@@ -210,7 +213,7 @@ module.exports = class Tournament
             nofStartedMatches++;
         });
         // secondly, handles upcoming games that can be started
-        this._._.matches.filter(match => match.startedAt === null).forEach(match => {
+        this._._.matches.filter(match => match.roundIdx === roundIdx && match.startedAt === null).forEach(match => {
             let addresses = [];
             // checks IP addresses from upcoming matches
             match.players.forEach(playerIdx => {
@@ -223,6 +226,7 @@ module.exports = class Tournament
                 match.startedAt = + new Date();
                 addresses.forEach(address => usedIPAddresses.push(address));
                 nofStartedMatches++;
+                startedMatches.push(match.idx);
 				log.info('The match #' + match.idx + ' has been started between '
 					+ this._._.players[match.players[0]].name + ' and ' + this._._.players[match.players[1]].name);
             }
@@ -250,12 +254,14 @@ module.exports = class Tournament
 			}
             // if not wait for the administrator's command
         } else {
-            this.startUncompletedGames(); // starts matches' games
+            for (let matchIdx of startedMatches) {
+                this.startUncompletedGames(matchIdx); // starts matches' games
+            }
         }
     }
-    startUncompletedGames() {
+    startUncompletedGames(matchIdx) {
         // filters out upcoming and finished matches
-        this._._.matches.filter(match => match.startedAt !== null && match.finishedAt === null).forEach(match => {
+        this._._.matches.filter(match => match.idx === matchIdx && match.startedAt !== null && match.finishedAt === null).forEach(match => {
             let hasUnfinishedGame = false;
             for (let gameIdx of match.games) {
                 if (this._._.games[gameIdx].startedAt === null) {
@@ -331,7 +337,7 @@ module.exports = class Tournament
                     this._._.players[match.players[0]].loses += 1;
                     this._._.players[match.players[1]].wins += 1;
                 }
-				this.startUncompletedMatches();
+				this.startUncompletedMatches(match.roundIdx);
             }
         });
     }
@@ -339,7 +345,7 @@ module.exports = class Tournament
         this._._.games.filter(game => game.startedAt !== null && game.finishedAt === null).forEach(game => {
             const currentTimestamp = + new Date();
             // checks if the move timeout is expired
-            if (game.moveTimeout < currentTimestamp) {
+            if (game.moveTimeout < currentTimestamp && game.startedAt !== null && game.finishedAt === null) {
                 const winner = game.playerOnMove === 'white' ? 'black' : 'white';
                 const loser = game.playerOnMove;
                 // since JS is single-threaded hence the socket clients should be available
@@ -359,7 +365,7 @@ module.exports = class Tournament
                     + 'the winner is ' + game.winner + ' and the game is won by: '
                     + game.wonBy);
                 // because the game is finished, checks other unfinished games
-                this.startUncompletedGames();
+                this.startUncompletedGames(game.matchIdx);
             }
         });
     }
@@ -414,7 +420,7 @@ module.exports = class Tournament
                 log.info('The game #' + game.idx + ' has been finished, '
                     + 'the winner is ' + game.winner + ' and the game is won by: '
                     + game.wonBy);
-                this.startUncompletedGames();
+                setTimeout(() => this.startUncompletedGames(game.matchIdx), 100);
             }
         }
     }
@@ -439,7 +445,7 @@ module.exports = class Tournament
             log.info('The game #' + game.idx + ' has been finished, '
                 + 'the winner is ' + game.winner + ' and the game is won by: '
                 + game.wonBy);
-            this.startUncompletedGames();
+            this.startUncompletedGames(game.matchIdx);
         }
     }
 }
