@@ -221,7 +221,9 @@ module.exports = class Tournament
         // finally, if there is no running matches, finishes the current round
         if (nofStartedMatches === 0) {
             let round = this._._.rounds.find(round => round.finishedAt === null);
-            round.finishedAt = + new Date();
+            if (typeof round !== 'undefined') {
+                round.finishedAt = + new Date();
+            }
             // recalculates tie breakers
             for (let player of this._._.players) {
                 player.sos = player.opponents.reduce((carry, playerIdx) => carry + this._._.players[playerIdx].points, 0);
@@ -276,7 +278,7 @@ module.exports = class Tournament
 						setTimeout(() => {
                             blackSocketClient.writeln('200 black ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
                             whiteSocketClient.writeln('200 white ' + this.boards[gameIdx].size + ' ' + this._._.options.initialBoard);
-                        }, 250); // i've added a little timeout to be sure that all players are ready
+                        }, 100); // i've added a little timeout to be sure that all players are ready
 						hasUnfinishedGame = true;
 						break; // starts only one game
 					}
