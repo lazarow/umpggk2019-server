@@ -44,20 +44,20 @@ for (let i = 0; i < parameters.nofclients; ++i) {
                 }
 			}
 		} else if (code == '220') {
-			client.board.makeMove(options[0], options[1], options[2]);
-            if (client.board.availableMoves.length > 0) {
-                let move =
-                    client.board.availableMoves[Math.floor(Math.random() * client.board.availableMoves.length)]
-                    .slice(0);
-                move[0] = client.board.indexToPosition(move[0]);
-                move[1] = client.board.indexToPosition(move[1]);
-                move[2] = client.board.indexToPosition(move[2]);
-                try {
+            try {
+                client.board.makeMove(options[0], options[1], options[2]);
+                if (client.board.availableMoves.length > 0) {
+                    let move =
+                        client.board.availableMoves[Math.floor(Math.random() * client.board.availableMoves.length)]
+                        .slice(0);
+                    move[0] = client.board.indexToPosition(move[0]);
+                    move[1] = client.board.indexToPosition(move[1]);
+                    move[2] = client.board.indexToPosition(move[2]);
                     client.board.makeMove(move[0], move[1], move[2]);
-                } catch (e) {
+                    client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2] + '\n');
+                    log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
                 }
-                client.write('210 ' + move[0] + ' ' + move[1] + ' ' + move[2] + '\n');
-                log.debug(name + ' has sent the message: 210 ' + move[0] + ' ' + move[1] + ' ' + move[2]);
+            } catch (e) {
             }
 		}
 	});
