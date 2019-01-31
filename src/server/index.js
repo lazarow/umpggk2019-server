@@ -48,7 +48,7 @@ server.on('connection', (socketClient) => {
 	// handles the client's messages
 	socketClient.on('data', (data) => {
 		const received = Buffer.isBuffer(data) ? data.toString().trim() : data.trim();
-        log.info('The message from ' + socketClient.remoteAddress + ': ' + received);
+        //log.debug('The message from ' + socketClient.remoteAddress + ': ' + received);
         for (let message of received.split('\n')) {
             message = message.trim();
             const splitted = message.split(' '),
